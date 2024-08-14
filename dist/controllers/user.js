@@ -1,6 +1,5 @@
 import { User } from "../models/user.js";
 import bcrypt from "bcryptjs";
-const MONGO_URI = process.env.MONGO_URI || " ";
 export const registerUser = async (req, res) => {
     const { email, password } = req.body;
     const existingUser = await User.findOne({ email });
@@ -9,9 +8,8 @@ export const registerUser = async (req, res) => {
             .status(400)
             .json({ success: false, message: "User already exists" });
     }
-    //   password can also be hashed at the client side before sending it to the server
+    //   password will also be hashed at the client side before sending it to the server
     const hashedPassword = await bcrypt.hash(password, 5);
-    console.log(hashedPassword);
     const newUser = new User({
         email,
         password: hashedPassword,
@@ -22,5 +20,37 @@ export const registerUser = async (req, res) => {
     }
     catch (e) {
         return res.status(500).json({ success: false, message: e.message });
+    }
+};
+export const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (user &&
+            user.password &&
+            (await bcrypt.compare(password, user.password))) {
+            // Send user data (you might want to include additional info here)
+            res.status(200).json({ user });
+        }
+        else {
+            res.status(401).json({ message: "Invalid credentials" });
+        }
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+export const verifyUser = async (req, res) => {
+    try {
+        const { email } = req.body;
+        let user = await User.findOne({ email });
+        if (!user) {
+            user = new User({ email });
+            await user.save();
+        }
+        res.status(200).json({ success: true });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
     }
 };

@@ -6,7 +6,7 @@ config({
     path: "./.env",
 });
 const app = express();
-// Middleware to parse JSON bodies
+// Middleware to parse JSON object
 app.use(express.json());
 const port = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || " ";

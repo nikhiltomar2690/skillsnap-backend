@@ -34,7 +34,11 @@ export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (
+      user &&
+      user.password &&
+      (await bcrypt.compare(password, user.password))
+    ) {
       // Send user data (you might want to include additional info here)
       res.status(200).json({ user });
     } else {
@@ -42,5 +46,21 @@ export const loginUser = async (req: Request, res: Response) => {
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+export const verifyUser = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({ email });
+      await user.save();
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 };
