@@ -1,21 +1,21 @@
 import mongoose from "mongoose";
-import { Schema } from "mongoose";
 
-const schema = new mongoose.Schema(
-  {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    password: {
-      type: String,
-      required: false,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  name: { type: String },
+  password: { type: String, required: false },
+  profilePictureUrl: { type: String },
+  userBio: { type: String },
 
-export const User = mongoose.model("User", schema);
+  // References to other collections
+  education: [{ type: mongoose.Schema.Types.ObjectId, ref: "Education" }],
+  experience: [{ type: mongoose.Schema.Types.ObjectId, ref: "Experience" }],
+  skills: [{ type: mongoose.Schema.Types.ObjectId, ref: "Skill" }],
+  languages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Language" }],
+  certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: "Certificate" }],
+  interests: [{ type: mongoose.Schema.Types.ObjectId, ref: "Interest" }],
+  courses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
+  awards: [{ type: mongoose.Schema.Types.ObjectId, ref: "Award" }],
+});
+
+export const User = mongoose.model("User", userSchema);
