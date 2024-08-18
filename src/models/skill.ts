@@ -1,22 +1,17 @@
 import mongoose from "mongoose";
 
-const skillSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    }, // Reference to the user
-    skill: { type: String, required: true },
-    level: {
-      type: String,
-      enum: ["Beginner", "Intermediate", "Advanced", "Expert"],
+const SkillsSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  skills: [
+    {
+      skillName: { type: String, required: true },
+      level: {
+        type: String,
+        enum: ["Beginner", "Intermediate", "Advanced", "Expert"],
+      },
+      link: { type: String },
     },
-    link: { type: String },
-  },
-  {
-    timestamps: true,
-  }
-);
+  ],
+});
 
-export const Skill = mongoose.model("Skill", skillSchema);
+export const Skills = mongoose.model("Skills", SkillsSchema);
