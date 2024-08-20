@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import { connectDB } from "../utils/connectDB.js";
 import { User } from "../models/user.js";
 import bcrypt from "bcryptjs";
 
@@ -39,7 +38,6 @@ export const loginUser = async (req: Request, res: Response) => {
       user.password &&
       (await bcrypt.compare(password, user.password))
     ) {
-      // Send user data (you might want to include additional info here)
       res.status(200).json({ user });
     } else {
       res.status(401).json({ message: "Invalid credentials" });
@@ -64,3 +62,5 @@ export const verifyUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const updateUser = async (req: Request, res: Response) => {};

@@ -29,7 +29,6 @@ export const loginUser = async (req, res) => {
         if (user &&
             user.password &&
             (await bcrypt.compare(password, user.password))) {
-            // Send user data (you might want to include additional info here)
             res.status(200).json({ user });
         }
         else {
@@ -54,3 +53,4 @@ export const verifyUser = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+export const updateUser = async (req, res) => { };
