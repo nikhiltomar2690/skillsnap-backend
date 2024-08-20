@@ -5,5 +5,6 @@ const app = express.Router();
 app.post("/register", registerUser);
 app.post("/login", loginUser);
 app.post("/verify", verifyUser);
+app.put("/update", verifyUser);
 
 export default app;
