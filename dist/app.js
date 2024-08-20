@@ -3,6 +3,7 @@ import { config } from "dotenv";
 import { connectDB } from "./utils/connectDB.js";
 import userRoutes from "./routes/user.js";
 import experienceRoutes from "./routes/experience.js";
+import educationRoutes from "./routes/education.js";
 config({
     path: "./.env",
 });
@@ -16,6 +17,7 @@ app.get("/", (req, res) => {
 });
 app.use("/user", userRoutes);
 app.use("/experience", experienceRoutes);
+app.use("/education", educationRoutes);
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
