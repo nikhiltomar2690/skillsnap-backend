@@ -4,6 +4,12 @@ import { connectDB } from "./utils/connectDB.js";
 import userRoutes from "./routes/user.js";
 import experienceRoutes from "./routes/experience.js";
 import educationRoutes from "./routes/education.js";
+import awardRoutes from "./routes/award.js";
+import certificateRoutes from "./routes/certificate.js";
+import courseRoutes from "./routes/course.js";
+import interestRoutes from "./routes/interest.js";
+import languageRoutes from "./routes/language.js";
+import skillRoutes from "./routes/skill.js";
 
 config({
   path: "./.env",
@@ -24,6 +30,13 @@ app.get("/", (req, res) => {
 app.use("/user", userRoutes);
 app.use("/experience", experienceRoutes);
 app.use("/education", educationRoutes);
+app.use("/award", awardRoutes);
+app.use("/certificate", certificateRoutes);
+app.use("/course", courseRoutes);
+app.use("/interest", interestRoutes);
+app.use("/language", languageRoutes);
+app.use("/skill", skillRoutes);
+
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
