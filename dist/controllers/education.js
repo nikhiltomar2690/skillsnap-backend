@@ -1,4 +1,5 @@
 import { Education } from "../models/education.js";
+import { User } from "../models/user.js";
 // Create Education Entry
 export const createEducation = async (req, res) => {
     const { userId, degreeName, link, school, city, country, startDate, endDate, isCurrent, description, } = req.body;
@@ -22,6 +23,9 @@ export const createEducation = async (req, res) => {
             description,
         });
         const savedEducation = await newEducation.save();
+        await User.findByIdAndUpdate(userId, {
+            $push: { education: savedEducation._id },
+        }, { new: true });
         return res.status(201).json({
             success: true,
             data: savedEducation,
@@ -45,6 +49,7 @@ export const deleteEducation = async (req, res) => {
         });
     }
     try {
+        // Find the education entry
         const education = await Education.findById(id);
         if (!education) {
             return res.status(404).json({
@@ -52,6 +57,12 @@ export const deleteEducation = async (req, res) => {
                 message: "Education entry not found",
             });
         }
+        // Remove the education reference from the User document
+        await User.findByIdAndUpdate(education.userId, {
+            $pull: { education: id }, // Assuming `education` is an array of education ObjectIds in the User schema
+        }, { new: true } // Return the updated document
+        );
+        // Delete the education entry
         await Education.findByIdAndDelete(id);
         return res.status(200).json({
             success: true,

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Education } from "../models/education.js";
+import { User } from "../models/user.js";
 // Create Education Entry
 export const createEducation = async (req: Request, res: Response) => {
   const {
@@ -37,6 +38,15 @@ export const createEducation = async (req: Request, res: Response) => {
     });
 
     const savedEducation = await newEducation.save();
+
+    await User.findByIdAndUpdate(
+      userId,
+      {
+        $push: { education: savedEducation._id },
+      },
+      { new: true }
+    );
+
     return res.status(201).json({
       success: true,
       data: savedEducation,
@@ -62,6 +72,7 @@ export const deleteEducation = async (req: Request, res: Response) => {
   }
 
   try {
+    // Find the education entry
     const education = await Education.findById(id);
 
     if (!education) {
@@ -71,6 +82,16 @@ export const deleteEducation = async (req: Request, res: Response) => {
       });
     }
 
+    // Remove the education reference from the User document
+    await User.findByIdAndUpdate(
+      education.userId,
+      {
+        $pull: { education: id }, // Assuming `education` is an array of education ObjectIds in the User schema
+      },
+      { new: true } // Return the updated document
+    );
+
+    // Delete the education entry
     await Education.findByIdAndDelete(id);
 
     return res.status(200).json({

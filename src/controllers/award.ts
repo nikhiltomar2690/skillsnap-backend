@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Award } from "../models/award.js";
+import { User } from "../models/user.js";
 
 export const createAward = async (req: Request, res: Response) => {
   const { userId, awardName, link, issuedBy, awardDate, description } =
@@ -24,7 +25,14 @@ export const createAward = async (req: Request, res: Response) => {
     });
 
     // Save the award to the database
-    await newAward.save();
+    const savedAward = await newAward.save();
+
+    // save the reference in the User object
+    await User.findByIdAndUpdate(
+      userId,
+      { $push: { awards: savedAward._id } },
+      { new: true }
+    );
 
     return res.status(201).json({
       success: true,
@@ -42,6 +50,13 @@ export const createAward = async (req: Request, res: Response) => {
 export const deleteAward = async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Award ID is required",
+    });
+  }
+
   try {
     const award = await Award.findByIdAndDelete(id);
 
@@ -51,6 +66,10 @@ export const deleteAward = async (req: Request, res: Response) => {
         message: "Award not found",
       });
     }
+
+    await User.findByIdAndUpdate(award.userId, {
+      $pull: { awards: id },
+    });
 
     return res.status(200).json({
       success: true,

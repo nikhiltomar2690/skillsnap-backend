@@ -1,7 +1,7 @@
 import { Experience } from "../models/experience.js";
+import { User } from "../models/user.js";
+import mongoose from "mongoose";
 export const createExperience = async (req, res) => {
-    // no need to handle userId check because I will already check the user
-    // on the frontend side from the useSession hook of next-auth
     const { userId, companyName, link, title, city, country, typeofJob, startDate, endDate, isCurrent, skills, } = req.body;
     // Validate the input data
     if (!userId ||
@@ -17,6 +17,7 @@ export const createExperience = async (req, res) => {
             .json({ success: false, message: "Missing required fields" });
     }
     try {
+        // Create a new experience entry
         const newExperience = new Experience({
             userId, // Linking experience to the user
             companyName,
@@ -30,10 +31,17 @@ export const createExperience = async (req, res) => {
             isCurrent,
             skills,
         });
-        await newExperience.save();
-        return res
-            .status(201)
-            .json({ success: true, message: "Experience created successfully" });
+        // Save the new experience entry
+        const savedExperience = await newExperience.save();
+        // Add the experience ID to the user's experiences array
+        await User.findByIdAndUpdate(userId, {
+            $push: { experience: savedExperience._id },
+        }, { new: true });
+        return res.status(201).json({
+            success: true,
+            message: "Experience created successfully",
+            data: savedExperience,
+        });
     }
     catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -58,18 +66,37 @@ export const getExperience = async (req, res) => {
 };
 export const deleteExperience = async (req, res) => {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid experience ID",
+        });
+    }
     try {
-        const deletedExperience = await Experience.findByIdAndDelete(id);
-        if (!deletedExperience) {
-            return res
-                .status(404)
-                .json({ success: false, message: "Experience not found" });
+        // Find the experience to get the associated userId
+        const experience = await Experience.findById(id);
+        if (!experience) {
+            return res.status(404).json({
+                success: false,
+                message: "Experience not found",
+            });
         }
-        return res
-            .status(200)
-            .json({ success: true, message: "Experience deleted successfully" });
+        // Remove the experience reference from the User
+        await User.findByIdAndUpdate(experience.userId, { $pull: { experience: id } }, // Ensure 'experience' is the correct field name
+        { new: true } // Return the updated document
+        );
+        // Delete the experience
+        await Experience.findByIdAndDelete(id);
+        return res.status(200).json({
+            success: true,
+            message: "Experience and reference from user deleted successfully",
+        });
     }
     catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        console.error("Error deleting experience:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error",
+        });
     }
 };

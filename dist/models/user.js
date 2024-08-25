@@ -5,6 +5,11 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: false },
     profilePictureUrl: { type: String },
     userBio: { type: String },
+    // auth related properties
+    verificationCode: { type: String },
+    verificationExpires: { type: Date },
+    isVerified: { type: Boolean, default: false },
+    provider: { type: String }, // Track authentication provider
     // References to other collections
     education: [{ type: mongoose.Schema.Types.ObjectId, ref: "Education" }],
     experience: [{ type: mongoose.Schema.Types.ObjectId, ref: "Experience" }],

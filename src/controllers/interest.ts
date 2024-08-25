@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Interest } from "../models/interest.js";
+import { User } from "../models/user.js";
 
 export const createInterest = async (req: Request, res: Response) => {
   const { userId, interests } = req.body;
@@ -17,12 +18,15 @@ export const createInterest = async (req: Request, res: Response) => {
   }
 
   try {
-    const newInterest = new Interest({
-      userId,
-      interests,
-    });
-
+    const newInterest = new Interest({ userId, interests });
     await newInterest.save();
+
+    await User.findByIdAndUpdate(
+      userId,
+      { $push: { interests: newInterest._id } },
+      { new: true }
+    );
+
     return res.status(201).json({
       success: true,
       message: "Interest created successfully",
@@ -40,19 +44,27 @@ export const deleteInterest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const deletedInterest = await Interest.findByIdAndDelete(id);
+    const interest = await Interest.findById(id);
 
-    if (!deletedInterest) {
+    if (!interest) {
       return res.status(404).json({
         success: false,
         message: "Interest not found",
       });
     }
 
+    await User.findByIdAndUpdate(
+      interest.userId,
+      { $pull: { interests: id } },
+      { new: true }
+    );
+
+    await Interest.findByIdAndDelete(id);
+
     return res.status(200).json({
       success: true,
       message: "Interest deleted successfully",
-      data: deletedInterest,
+      data: interest,
     });
   } catch (error: any) {
     return res.status(500).json({
