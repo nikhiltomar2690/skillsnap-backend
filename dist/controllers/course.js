@@ -1,4 +1,5 @@
 import { Course } from "../models/course.js";
+import { User } from "../models/user.js";
 export const createCourse = async (req, res) => {
     const { userId, courseName, link, startDate, endDate, isCurrent, description, institution, city, country, } = req.body;
     if (!userId || !courseName) {
@@ -21,6 +22,10 @@ export const createCourse = async (req, res) => {
             country,
         });
         await newCourse.save();
+        await User.findByIdAndUpdate(userId, {
+            $push: { courses: newCourse._id }, // Assuming `courses` is an array of course ObjectIds in the User schema
+        }, { new: true } // Return the updated document
+        );
         return res.status(201).json({
             success: true,
             message: "Course created successfully",
@@ -37,17 +42,21 @@ export const createCourse = async (req, res) => {
 export const deleteCourse = async (req, res) => {
     const { id } = req.params;
     try {
-        const deletedCourse = await Course.findByIdAndDelete(id);
-        if (!deletedCourse) {
+        const courseToDelete = await Course.findById(id);
+        if (!courseToDelete) {
             return res.status(404).json({
                 success: false,
                 message: "Course not found",
             });
         }
+        await Course.findByIdAndDelete(id);
+        await User.findByIdAndUpdate(courseToDelete.userId, {
+            $pull: { courses: id },
+        }, { new: true });
         return res.status(200).json({
             success: true,
             message: "Course deleted successfully",
-            data: deletedCourse,
+            data: courseToDelete,
         });
     }
     catch (error) {

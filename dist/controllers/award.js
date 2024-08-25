@@ -1,4 +1,5 @@
 import { Award } from "../models/award.js";
+import { User } from "../models/user.js";
 export const createAward = async (req, res) => {
     const { userId, awardName, link, issuedBy, awardDate, description } = req.body;
     if (!userId || !awardName) {
@@ -18,7 +19,9 @@ export const createAward = async (req, res) => {
             description,
         });
         // Save the award to the database
-        await newAward.save();
+        const savedAward = await newAward.save();
+        // save the reference in the User object
+        await User.findByIdAndUpdate(userId, { $push: { awards: savedAward._id } }, { new: true });
         return res.status(201).json({
             success: true,
             message: "Award created successfully",
@@ -34,6 +37,12 @@ export const createAward = async (req, res) => {
 };
 export const deleteAward = async (req, res) => {
     const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({
+            success: false,
+            message: "Award ID is required",
+        });
+    }
     try {
         const award = await Award.findByIdAndDelete(id);
         if (!award) {
@@ -42,6 +51,9 @@ export const deleteAward = async (req, res) => {
                 message: "Award not found",
             });
         }
+        await User.findByIdAndUpdate(award.userId, {
+            $pull: { awards: id },
+        });
         return res.status(200).json({
             success: true,
             message: "Award deleted successfully",
