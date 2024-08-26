@@ -10,6 +10,7 @@ import courseRoutes from "./routes/course.js";
 import interestRoutes from "./routes/interest.js";
 import languageRoutes from "./routes/language.js";
 import skillRoutes from "./routes/skill.js";
+import cookieParser from "cookie-parser";
 
 config({
   path: "./.env",
@@ -17,6 +18,7 @@ config({
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 const port = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || " ";

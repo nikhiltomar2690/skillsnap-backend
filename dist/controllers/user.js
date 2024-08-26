@@ -325,3 +325,106 @@ export const updateUserPassword = async (req, res) => {
         });
     }
 };
+export const changeEmail = async (req, res) => {
+    const { userId, newEmail } = req.body;
+    if (!userId || !newEmail) {
+        return res
+            .status(400)
+            .json({ success: false, message: "User ID and new email are required" });
+    }
+    try {
+        const existingUser = await User.findOne({ email: newEmail });
+        if (existingUser) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Email is already in use" });
+        }
+        const existingUnverifiedUser = await unverifiedUser.findOne({
+            email: newEmail,
+        });
+        if (existingUnverifiedUser) {
+            console.log("Removing existing unverified email request");
+            await unverifiedUser.deleteOne({ email: newEmail });
+        }
+        const verificationCode = crypto.randomInt(100000, 999999).toString();
+        console.log("Generated verification code:", verificationCode);
+        const newUnverifiedUser = new unverifiedUser({
+            userId,
+            email: newEmail,
+            verificationCode,
+            verificationExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        });
+        await newUnverifiedUser.save();
+        console.log("Unverified email change request saved to database");
+        await sendEmail(newEmail, verificationCode);
+        console.log("Verification email sent to new email:", newEmail);
+        return res
+            .status(200)
+            .cookie("newEmail", newEmail, {
+            httpOnly: true,
+            maxAge: 15 * 60 * 1000, // Cookie expires in 15 minutes
+            path: "/",
+        })
+            .json({
+            success: true,
+            message: "Verification code sent to new email. Please verify.",
+        });
+    }
+    catch (e) {
+        console.error("Error changing email:", e.message);
+        return res
+            .status(500)
+            .json({ success: false, message: "Internal server error" });
+    }
+};
+export const verifyEmailChange = async (req, res) => {
+    const { email, code } = req.body;
+    const newEmail = req.cookies.newEmail;
+    if (!email || !code || !newEmail) {
+        return res.status(400).json({
+            success: false,
+            message: "Original email, new email, and verification code are required",
+        });
+    }
+    try {
+        const unverifiedEntry = await unverifiedUser.findOne({ email: newEmail });
+        if (!unverifiedEntry) {
+            return res.status(400).json({
+                success: false,
+                message: "Verification entry not found",
+            });
+        }
+        if (unverifiedEntry.verificationCode !== code ||
+            !(unverifiedEntry.verificationExpires instanceof Date) ||
+            new Date() > unverifiedEntry.verificationExpires) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired verification code",
+            });
+        }
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        user.email = newEmail;
+        await user.save();
+        // Remove the unverified user entry
+        await unverifiedUser.deleteOne({ email: newEmail });
+        // Clear the cookie
+        res.clearCookie("newEmail");
+        return res.status(200).json({
+            success: true,
+            message: "Email updated successfully",
+        });
+    }
+    catch (error) {
+        console.error("Error verifying email change:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
