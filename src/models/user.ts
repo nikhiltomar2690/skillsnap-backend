@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { nanoid } from "nanoid";
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
@@ -6,6 +7,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: false },
   profilePictureUrl: { type: String },
   userBio: { type: String },
+
+  // user slug
+  slug: { type: String, unique: true, default: () => nanoid(10) },
 
   // auth related properties
   verificationCode: { type: String },
