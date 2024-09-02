@@ -22,10 +22,12 @@ export const createCourse = async (req, res) => {
             country,
         });
         await newCourse.save();
+        // move queries in separate folder
         await User.findByIdAndUpdate(userId, {
-            $push: { courses: newCourse._id }, // Assuming `courses` is an array of course ObjectIds in the User schema
+            $push: { courses: newCourse._id },
         }, { new: true } // Return the updated document
         );
+        // send response using functions
         return res.status(201).json({
             success: true,
             message: "Course created successfully",
@@ -33,6 +35,7 @@ export const createCourse = async (req, res) => {
         });
     }
     catch (error) {
+        // change to 400 for request errors
         return res.status(500).json({
             success: false,
             message: error.message,
