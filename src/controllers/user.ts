@@ -2,9 +2,10 @@ import { Request, Response } from "express";
 import { User } from "../models/user.js";
 import { unverifiedUser } from "../models/unverifiedUser.js";
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
 import crypto from "crypto";
 import { parse } from "cookie";
+
+import { uploadOnCloudinary } from "../utils/cloudinaryUtil.js";
 import sendEmail from "../utils/sendMail.js";
 
 // Nodemailer for sending mails
@@ -510,6 +511,49 @@ export const verifyEmailChange = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+};
+
+export const uploadImage = async (req: Request, res: Response) => {
+  try {
+    const userId = req.body.userId;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
+    }
+
+    // Upload the image to Cloudinary
+    const imageUrl = await uploadOnCloudinary(file.path);
+
+    // Update the user profile image URL in the database
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePictureUrl: imageUrl },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Image uploaded and profile updated successfully",
+      imageUrl,
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };
