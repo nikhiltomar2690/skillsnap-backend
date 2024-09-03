@@ -1,5 +1,5 @@
 import { Award } from "../models/award.js";
-import { createNewAward, updateUserWithAward, deleteAwardById, removeAwardFromUser, getAwardById, } from "../queries/userQueries.js";
+import { createNewAward, updateUserWithAward, deleteAwardById, removeAwardFromUser, getAwardById, } from "../queries/awardQueries.js";
 export const createAward = async (req, res) => {
     const { userId, awardName, link, issuedBy, awardDate, description } = req.body;
     if (!userId) {

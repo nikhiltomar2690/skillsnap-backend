@@ -7,7 +7,7 @@ import {
   deleteAwardById,
   removeAwardFromUser,
   getAwardById,
-} from "../queries/userQueries.js";
+} from "../queries/awardQueries.js";
 
 export const createAward = async (req: Request, res: Response) => {
   const { userId, awardName, link, issuedBy, awardDate, description } =
