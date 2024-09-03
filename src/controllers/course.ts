@@ -1,6 +1,13 @@
 import { Request, Response } from "express";
 import { Course } from "../models/course.js";
 import { User } from "../models/user.js";
+import {
+  createNewCourse,
+  updateUserWithCourse,
+  getCourseById,
+  deleteCourseById,
+  removeCourseFromUser,
+} from "../queries/courseQueries.js";
 
 export const createCourse = async (req: Request, res: Response) => {
   const {
@@ -16,16 +23,22 @@ export const createCourse = async (req: Request, res: Response) => {
     country,
   } = req.body;
 
-  if (!userId || !courseName) {
+  if (!userId) {
     return res.status(400).json({
       success: false,
-      message: "userId and courseName are required.",
+      message: "userId is required.",
+    });
+  }
+
+  if (!courseName) {
+    return res.status(400).json({
+      success: false,
+      message: "courseName is required.",
     });
   }
 
   try {
-    const newCourse = new Course({
-      userId,
+    const newCourse = await createNewCourse(userId, {
       courseName,
       link,
       startDate,
@@ -37,16 +50,7 @@ export const createCourse = async (req: Request, res: Response) => {
       country,
     });
 
-    await newCourse.save();
-
-    // move queries in separate folder
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        $push: { courses: newCourse._id },
-      },
-      { new: true } // Return the updated document
-    );
+    await updateUserWithCourse(userId, newCourse._id.toString());
 
     // send response using functions
     return res.status(201).json({
@@ -67,28 +71,21 @@ export const deleteCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const courseToDelete = await Course.findById(id);
+    const deletedCourse = await deleteCourseById(id);
 
-    if (!courseToDelete) {
+    if (!deletedCourse) {
       return res.status(404).json({
         success: false,
         message: "Course not found",
       });
     }
-    await Course.findByIdAndDelete(id);
 
-    await User.findByIdAndUpdate(
-      courseToDelete.userId,
-      {
-        $pull: { courses: id },
-      },
-      { new: true }
-    );
+    await removeCourseFromUser(deletedCourse.userId.toString(), id);
 
     return res.status(200).json({
       success: true,
       message: "Course deleted successfully",
-      data: courseToDelete,
+      data: deletedCourse,
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -102,7 +99,7 @@ export const getCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const course = await Course.findById(id);
+    const course = await getCourseById(id);
 
     if (!course) {
       return res.status(404).json({
