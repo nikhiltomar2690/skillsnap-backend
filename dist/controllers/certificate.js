@@ -1,5 +1,4 @@
-import { Certificate } from "../models/certificate.js";
-import { User } from "../models/user.js";
+import { createNewCertificate, updateUserWithCertificate, deleteCertificateById, removeCertificateFromUser, getCertificateById, } from "../queries/certificateQueries.js";
 // Create Certificate
 export const createCertificate = async (req, res) => {
     const { userId, certificateName, link, startDate, endDate, isLifetime, description, } = req.body;
@@ -16,8 +15,7 @@ export const createCertificate = async (req, res) => {
         });
     }
     try {
-        const newCertificate = new Certificate({
-            userId,
+        const newCertificate = await createNewCertificate(userId, {
             certificateName,
             link,
             startDate,
@@ -25,11 +23,8 @@ export const createCertificate = async (req, res) => {
             isLifetime,
             description,
         });
-        await newCertificate.save();
         // Update the User document to include the new certificate
-        await User.findByIdAndUpdate(userId, {
-            $push: { certificates: newCertificate._id },
-        });
+        await updateUserWithCertificate(userId, newCertificate._id.toString());
         return res.status(201).json({
             success: true,
             message: "Certificate created successfully",
@@ -46,8 +41,14 @@ export const createCertificate = async (req, res) => {
 // Delete Certificate
 export const deleteCertificate = async (req, res) => {
     const { id } = req.params;
+    if (!id) {
+        return res.status(400).json({
+            success: false,
+            message: "Certificate ID is required.",
+        });
+    }
     try {
-        const deletedCertificate = await Certificate.findByIdAndDelete(id);
+        const deletedCertificate = await deleteCertificateById(id);
         if (!deletedCertificate) {
             return res.status(404).json({
                 success: false,
@@ -55,8 +56,7 @@ export const deleteCertificate = async (req, res) => {
             });
         }
         // Remove the reference to the deleted certificate from the User document
-        await User.findByIdAndUpdate(deletedCertificate.userId, { $pull: { certificates: id } }, { new: true } // Return the updated User document
-        );
+        removeCertificateFromUser(deletedCertificate.userId.toString(), id);
         return res.status(200).json({
             success: true,
             message: "Certificate deleted successfully",
@@ -74,7 +74,7 @@ export const deleteCertificate = async (req, res) => {
 export const getCertificate = async (req, res) => {
     const { id } = req.params;
     try {
-        const certificate = await Certificate.findById(id);
+        const certificate = await getCertificateById(id);
         if (!certificate) {
             return res.status(404).json({
                 success: false,
