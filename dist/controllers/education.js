@@ -1,17 +1,21 @@
-import { Education } from "../models/education.js";
-import { User } from "../models/user.js";
+import { createNewEducation, updateUserWithEducation, getEducationById, deleteEducationById, removeEducationFromUser, } from "../queries/educationQueries.js";
 // Create Education Entry
 export const createEducation = async (req, res) => {
     const { userId, degreeName, link, school, city, country, startDate, endDate, isCurrent, description, } = req.body;
-    if (!userId || !degreeName) {
+    if (!userId) {
         return res.status(400).json({
             success: false,
-            message: "userId and degreeName are required",
+            message: "User ID is required",
+        });
+    }
+    if (!degreeName) {
+        return res.status(400).json({
+            success: false,
+            message: "Degree name is required",
         });
     }
     try {
-        const newEducation = new Education({
-            userId,
+        const newEducation = await createNewEducation(userId, {
             degreeName,
             link,
             school,
@@ -22,13 +26,10 @@ export const createEducation = async (req, res) => {
             isCurrent,
             description,
         });
-        const savedEducation = await newEducation.save();
-        await User.findByIdAndUpdate(userId, {
-            $push: { education: savedEducation._id },
-        }, { new: true });
+        await updateUserWithEducation(userId, newEducation._id.toString());
         return res.status(201).json({
             success: true,
-            data: savedEducation,
+            data: newEducation,
         });
     }
     catch (error) {
@@ -50,7 +51,7 @@ export const deleteEducation = async (req, res) => {
     }
     try {
         // Find the education entry
-        const education = await Education.findById(id);
+        const education = await deleteEducationById(id);
         if (!education) {
             return res.status(404).json({
                 success: false,
@@ -58,12 +59,7 @@ export const deleteEducation = async (req, res) => {
             });
         }
         // Remove the education reference from the User document
-        await User.findByIdAndUpdate(education.userId, {
-            $pull: { education: id }, // Assuming `education` is an array of education ObjectIds in the User schema
-        }, { new: true } // Return the updated document
-        );
-        // Delete the education entry
-        await Education.findByIdAndDelete(id);
+        await removeEducationFromUser(education.userId.toString(), id);
         return res.status(200).json({
             success: true,
             message: "Education entry deleted successfully",
@@ -87,7 +83,7 @@ export const getEducation = async (req, res) => {
         });
     }
     try {
-        const education = await Education.findById(id).populate("userId", "email name");
+        const education = await getEducationById(id);
         if (!education) {
             return res.status(404).json({
                 success: false,
