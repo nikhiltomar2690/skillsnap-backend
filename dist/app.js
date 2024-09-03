@@ -12,7 +12,6 @@ import languageRoutes from "./routes/language.js";
 import skillRoutes from "./routes/skill.js";
 import cookieParser from "cookie-parser";
 import morganMiddleware from "./middlewares/morganMiddleware.js";
-import logger from "./logger.js";
 config({
     path: "./.env",
 });
@@ -37,6 +36,6 @@ app.use("/interest", interestRoutes);
 app.use("/language", languageRoutes);
 app.use("/skill", skillRoutes);
 app.listen(port, () => {
-    logger.info(`Server is running on port ${port}`);
+    console.log(`Server is running on port ${port}`);
 });
 export default app;
