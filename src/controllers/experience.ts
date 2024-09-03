@@ -2,6 +2,13 @@ import { Request, Response } from "express";
 import { Experience } from "../models/experience.js";
 import { User } from "../models/user.js";
 import mongoose from "mongoose";
+import {
+  createNewExperience,
+  updateUserWithExperience,
+  getExperienceById,
+  deleteExperienceById,
+  removeExperienceFromUser,
+} from "../queries/experienceQueries.js";
 
 export const createExperience = async (req: Request, res: Response) => {
   const {
@@ -19,25 +26,30 @@ export const createExperience = async (req: Request, res: Response) => {
   } = req.body;
 
   // Validate the input data
-  if (
-    !userId ||
-    !companyName ||
-    !title ||
-    !city ||
-    !country ||
-    !typeofJob ||
-    !startDate ||
-    !skills
-  ) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Missing required fields" });
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: "User ID is required",
+    });
+  }
+
+  if (!companyName) {
+    return res.status(400).json({
+      success: false,
+      message: "Company name is required",
+    });
+  }
+
+  if (!title) {
+    return res.status(400).json({
+      success: false,
+      message: "Title is required",
+    });
   }
 
   try {
     // Create a new experience entry
-    const newExperience = new Experience({
-      userId, // Linking experience to the user
+    const newExperience = await createNewExperience(userId, {
       companyName,
       link,
       title,
@@ -50,22 +62,16 @@ export const createExperience = async (req: Request, res: Response) => {
       skills,
     });
 
-    // Save the new experience entry
-    const savedExperience = await newExperience.save();
-
     // Add the experience ID to the user's experiences array
-    await User.findByIdAndUpdate(
+    const updatedUser = await updateUserWithExperience(
       userId,
-      {
-        $push: { experience: savedExperience._id },
-      },
-      { new: true }
+      newExperience._id.toString()
     );
 
     return res.status(201).json({
       success: true,
       message: "Experience created successfully",
-      data: savedExperience,
+      data: newExperience,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -77,8 +83,15 @@ export const getExperience = async (req: Request, res: Response) => {
   // example : /experience/get/60f3b3b3b3b3b3b3b3b3b3b
   const { id } = req.params;
 
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Experience ID is required",
+    });
+  }
+
   try {
-    const experience = await Experience.findById(id);
+    const experience = await getExperienceById(id);
 
     if (!experience) {
       return res
@@ -95,16 +108,16 @@ export const getExperience = async (req: Request, res: Response) => {
 export const deleteExperience = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!id) {
     return res.status(400).json({
       success: false,
-      message: "Invalid experience ID",
+      message: "Experience ID is required",
     });
   }
 
   try {
     // Find the experience to get the associated userId
-    const experience = await Experience.findById(id);
+    const experience = await deleteExperienceById(id);
 
     if (!experience) {
       return res.status(404).json({
@@ -114,14 +127,7 @@ export const deleteExperience = async (req: Request, res: Response) => {
     }
 
     // Remove the experience reference from the User
-    await User.findByIdAndUpdate(
-      experience.userId,
-      { $pull: { experience: id } }, // Ensure 'experience' is the correct field name
-      { new: true } // Return the updated document
-    );
-
-    // Delete the experience
-    await Experience.findByIdAndDelete(id);
+    await removeExperienceFromUser(experience.userId.toString(), id);
 
     return res.status(200).json({
       success: true,
