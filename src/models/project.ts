@@ -1,5 +1,21 @@
 import mongoose from "mongoose";
 
+const blockSchema = new mongoose.Schema(
+  {
+    blockHeading: {
+      type: String,
+      required: true,
+    },
+    blockImg: {
+      type: String,
+    },
+    blockText: {
+      type: String,
+    },
+  },
+  { _id: false }
+);
+
 const projectSchema = new mongoose.Schema(
   {
     coverImage: {
@@ -18,20 +34,7 @@ const projectSchema = new mongoose.Schema(
     date: {
       type: Date,
     },
-    blocks: [
-      {
-        blockHeading: {
-          type: String,
-          required: true,
-        },
-        blockImg: {
-          type: String,
-        },
-        blockText: {
-          type: String,
-        },
-      },
-    ],
+    blocks: [blockSchema],
     urls: [
       {
         urlTitle: {

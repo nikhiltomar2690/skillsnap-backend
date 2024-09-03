@@ -7,5 +7,7 @@ const interestSchema = new mongoose.Schema({
             link: { type: String },
         },
     ],
+}, {
+    timestamps: true,
 });
 export const Interest = mongoose.model("Interest", interestSchema);
