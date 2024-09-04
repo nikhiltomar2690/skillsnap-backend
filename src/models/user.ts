@@ -68,6 +68,8 @@ const userSchema = new mongoose.Schema({
   interests: [{ type: mongoose.Schema.Types.ObjectId, ref: "Interest" }],
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
   awards: [{ type: mongoose.Schema.Types.ObjectId, ref: "Award" }],
+
+  projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
 });
 
 export const User = mongoose.model("User", userSchema);

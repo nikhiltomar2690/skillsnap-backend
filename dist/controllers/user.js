@@ -1,8 +1,8 @@
 import { User } from "../models/user.js";
-import { unverifiedUser } from "../models/unverifiedUser.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { parse } from "cookie";
+import { findUserByEmail, findUnverifiedUserByEmail, deleteUnverifiedUserByEmail, createUnverifiedUser, createNewUser, createUser, findUserBySlug, updateUserSlug, updatePassword, removeExistingUnverifiedUser, updateUserEmail, updateUserProfilePicture, } from "../queries/userQueries.js";
 import { uploadOnCloudinary } from "../utils/cloudinaryUtil.js";
 import sendEmail from "../utils/sendMail.js";
 export const registerUser = async (req, res) => {
@@ -19,28 +19,28 @@ export const registerUser = async (req, res) => {
             .json({ success: false, message: "Password is required" });
     }
     try {
-        const existingUser = await User.findOne({ email });
+        const existingUser = await findUserByEmail(email);
         if (existingUser) {
             return res
                 .status(400)
                 .json({ success: false, message: "Email is already registered" });
         }
         console.log("No existing user found, proceeding with registration");
-        const existingUnverifiedUser = await unverifiedUser.findOne({ email });
+        const existingUnverifiedUser = await findUnverifiedUserByEmail(email);
         if (existingUnverifiedUser) {
             console.log("Found existing unverified user, deleting it");
-            await unverifiedUser.deleteOne({ email });
+            await deleteUnverifiedUserByEmail(email);
         }
         const verificationCode = crypto.randomInt(100000, 999999).toString();
         const hashedPassword = await bcrypt.hash(password, 10);
         console.log("Generated verification code:", verificationCode);
-        const newUnverifiedUser = new unverifiedUser({
-            email,
-            password: hashedPassword,
-            verificationCode,
-            verificationExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        });
-        await newUnverifiedUser.save();
+        // const newUnverifiedUser = new unverifiedUser({
+        //   email,
+        //   password: hashedPassword,
+        //   verificationCode,
+        //   verificationExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        // });
+        const newUnverifiedUser = await createUnverifiedUser(email, hashedPassword, verificationCode);
         console.log("Unverified user saved to database");
         await sendEmail(email, verificationCode);
         console.log("Verification email sent, setting cookie");
@@ -78,7 +78,7 @@ export const verifyUser = async (req, res) => {
             .json({ success: false, message: "Verification code not found" });
     }
     try {
-        const UnverifiedUser = await unverifiedUser.findOne({ email });
+        const UnverifiedUser = await findUnverifiedUserByEmail(email);
         if (!UnverifiedUser) {
             return res
                 .status(404)
@@ -95,16 +95,14 @@ export const verifyUser = async (req, res) => {
             return;
         }
         // Create a new user document
-        const newUser = new User({
+        const newUser = await createNewUser({
             email: UnverifiedUser.email,
-            password: UnverifiedUser.password,
-            provider: UnverifiedUser.provider,
+            password: UnverifiedUser.password || "",
+            provider: UnverifiedUser.provider || "",
             isVerified: true,
         });
-        // Save the new user to the User collection
-        await newUser.save();
         // Remove the entry from the UnverifiedUser collection
-        await UnverifiedUser.deleteOne({ email });
+        await deleteUnverifiedUserByEmail(email);
         // Clear the unverifiedEmail cookie saved in the browser
         res
             .status(200)
@@ -128,7 +126,7 @@ export const loginUser = async (req, res) => {
         return res.status(400).json({ message: "Email and password are required" });
     }
     try {
-        const user = await User.findOne({ email });
+        const user = await findUserByEmail(email);
         if (user &&
             user.password &&
             (await bcrypt.compare(password, user.password))) {
@@ -152,12 +150,11 @@ export const loginViaGoogle = async (req, res) => {
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (!existingUser) {
-            const newUser = new User({
+            const newUser = await createUser({
                 email,
                 isVerified: true,
                 provider: "google",
             });
-            await newUser.save();
             return res.status(201).json({ message: "User created successfully" });
         }
         // If user exists, just return success
@@ -177,11 +174,11 @@ export const updateSlug = async (req, res) => {
         return res.status(400).json({ message: "Slug is required" });
     }
     try {
-        const existingUser = await User.findOne({ slug });
+        const existingUser = await findUserBySlug(slug);
         if (existingUser && existingUser._id.toString() !== userId) {
             return res.status(400).json({ message: "Slug already exists" });
         }
-        const updatedUser = await User.findByIdAndUpdate(userId, { slug }, { new: true });
+        const updatedUser = await updateUserSlug(userId, slug);
         if (!updatedUser) {
             return res.status(404).json({
                 success: false,
@@ -211,19 +208,10 @@ export const updateUserPassword = async (req, res) => {
         });
     }
     try {
-        // Find the user by ID
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found.",
-            });
-        }
         // Hash the new password
         const hashedPassword = await bcrypt.hash(password, 10);
         // Update the user's password
-        user.password = hashedPassword;
-        await user.save();
+        await updatePassword(userId, hashedPassword);
         return res.status(200).json({
             success: true,
             message: "Password updated successfully.",
@@ -244,28 +232,16 @@ export const changeEmail = async (req, res) => {
             .json({ success: false, message: "User ID and new email are required" });
     }
     try {
-        const existingUser = await User.findOne({ email: newEmail });
+        const existingUser = await findUserByEmail(newEmail);
         if (existingUser) {
             return res
                 .status(400)
                 .json({ success: false, message: "Email is already in use" });
         }
-        const existingUnverifiedUser = await unverifiedUser.findOne({
-            email: newEmail,
-        });
-        if (existingUnverifiedUser) {
-            console.log("Removing existing unverified email request");
-            await unverifiedUser.deleteOne({ email: newEmail });
-        }
+        await removeExistingUnverifiedUser(newEmail);
         const verificationCode = crypto.randomInt(100000, 999999).toString();
         console.log("Generated verification code:", verificationCode);
-        const newUnverifiedUser = new unverifiedUser({
-            userId,
-            email: newEmail,
-            verificationCode,
-            verificationExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
-        });
-        await newUnverifiedUser.save();
+        await createUnverifiedUser(newEmail, "", verificationCode);
         console.log("Unverified email change request saved to database");
         await sendEmail(newEmail, verificationCode);
         console.log("Verification email sent to new email:", newEmail);
@@ -298,7 +274,7 @@ export const verifyEmailChange = async (req, res) => {
         });
     }
     try {
-        const unverifiedEntry = await unverifiedUser.findOne({ email: newEmail });
+        const unverifiedEntry = await findUnverifiedUserByEmail(newEmail);
         if (!unverifiedEntry) {
             return res.status(400).json({
                 success: false,
@@ -313,17 +289,16 @@ export const verifyEmailChange = async (req, res) => {
                 message: "Invalid or expired verification code",
             });
         }
-        const user = await User.findOne({ email });
+        const user = await findUserByEmail(email);
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found",
             });
         }
-        user.email = newEmail;
-        await user.save();
+        await updateUserEmail(user._id.toString(), newEmail);
         // Remove the unverified user entry
-        await unverifiedUser.deleteOne({ email: newEmail });
+        await deleteUnverifiedUserByEmail(newEmail);
         // Clear the cookie
         res.clearCookie("newEmail");
         return res.status(200).json({
@@ -352,7 +327,7 @@ export const uploadImage = async (req, res) => {
         // Upload the image to Cloudinary
         const imageUrl = await uploadOnCloudinary(file.path);
         // Update the user profile image URL in the database
-        const updatedUser = await User.findByIdAndUpdate(userId, { profilePictureUrl: imageUrl }, { new: true });
+        const updatedUser = await updateUserProfilePicture(userId, imageUrl);
         if (!updatedUser) {
             return res.status(404).json({
                 success: false,
