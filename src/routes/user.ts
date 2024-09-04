@@ -23,6 +23,5 @@ app.post("/updatepassword", updateUserPassword);
 app.post("/changeemail", changeEmail);
 app.post("/verifynewemail", verifyEmailChange);
 app.post("/imageupload", upload.single("image"), uploadImage);
-// app.put("/update", verifyUser);
 
 export default app;

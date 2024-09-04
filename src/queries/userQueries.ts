@@ -129,3 +129,20 @@ export async function updateUserProfilePicture(
 
   return updatedUser;
 }
+
+export const getFullUserBySlug = async (slug: string) => {
+  try {
+    const user = await User.findOne({ slug })
+      .populate("education")
+      .populate("experience")
+      .populate("certificates")
+      .populate("interests")
+      .populate("courses")
+      .populate("awards")
+      .populate("projects");
+
+    return user;
+  } catch (error: any) {
+    throw new Error("Error fetching user by slug: " + error.message);
+  }
+};
