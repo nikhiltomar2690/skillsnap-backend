@@ -146,3 +146,71 @@ export const getFullUserBySlug = async (slug: string) => {
     throw new Error("Error fetching user by slug: " + error.message);
   }
 };
+
+export const updateUserWithVerificationCode = async (
+  email: string,
+  verificationCode: string,
+  verificationExpires: Date
+) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { email },
+      {
+        verificationCode,
+        verificationExpires,
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return user;
+  } catch (error: any) {
+    console.error("Error updating user with verification code:", error.message);
+    throw new Error("Failed to update user with verification code");
+  }
+};
+
+export const deleteVerificationCode = async (email: string) => {
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { email }, // Find the user by email
+      {
+        $unset: {
+          // Unset the verificationCode and verificationExpires fields
+          verificationCode: 1,
+          verificationExpires: 1,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      throw new Error("User not found");
+    }
+
+    return updatedUser;
+  } catch (error: any) {
+    console.error("Error deleting verification code:", error.message);
+    throw new Error("Failed to delete verification code");
+  }
+};
+
+export async function updatePasswordByEmail(
+  email: string,
+  hashedPassword: string
+) {
+  // Find the user by email
+  const user = await findUserByEmail(email);
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  // Update the user's password
+  user.password = hashedPassword;
+
+  // Save the user with the updated password
+  return await user.save();
+}

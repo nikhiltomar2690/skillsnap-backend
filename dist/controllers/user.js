@@ -2,7 +2,7 @@ import { User } from "../models/user.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { parse } from "cookie";
-import { findUserByEmail, findUnverifiedUserByEmail, deleteUnverifiedUserByEmail, createUnverifiedUser, createNewUser, createUser, findUserBySlug, updateUserSlug, updatePassword, removeExistingUnverifiedUser, updateUserEmail, updateUserProfilePicture, } from "../queries/userQueries.js";
+import { findUserByEmail, findUnverifiedUserByEmail, deleteUnverifiedUserByEmail, createUnverifiedUser, updatePasswordByEmail, createNewUser, deleteVerificationCode, createUser, updateUserWithVerificationCode, findUserBySlug, updateUserSlug, updatePassword, removeExistingUnverifiedUser, updateUserEmail, updateUserProfilePicture, } from "../queries/userQueries.js";
 import { uploadOnCloudinary } from "../utils/cloudinaryUtil.js";
 import sendEmail from "../utils/sendMail.js";
 export const registerUser = async (req, res) => {
@@ -346,5 +346,117 @@ export const uploadImage = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+// enter email to receive code on email
+export const requestPasswordReset = async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res
+            .status(400)
+            .json({ success: false, message: "Email is required" });
+    }
+    try {
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+        // Generate a verification code and expiration time
+        const verificationCode = crypto.randomInt(100000, 999999).toString(); // 6-digit code
+        const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // Code expires in 15 minutes
+        // Update the user with the verification code and expiration
+        await updateUserWithVerificationCode(email, verificationCode, verificationExpires);
+        // Send the verification code to the user's email
+        await sendEmail(user.email, verificationCode);
+        // Store the email in a cookie for later verification
+        res.cookie("resetemail", email, {
+            httpOnly: true,
+            maxAge: 15 * 60 * 1000,
+        }); // Cookie expires in 15 mins
+        return res.status(200).json({
+            success: true,
+            message: "Verification code sent to your email.",
+        });
+    }
+    catch (error) {
+        return res
+            .status(500)
+            .json({ success: false, message: "Error sending verification code" });
+    }
+};
+export const verifyResetCode = async (req, res) => {
+    const { code } = req.body;
+    const cookies = req.cookies;
+    const email = cookies.resetemail;
+    if (!email) {
+        return res
+            .status(400)
+            .json({ success: false, message: "Email not found in cookie" });
+    }
+    if (!code) {
+        return res
+            .status(400)
+            .json({ success: false, message: "Verification code is required" });
+    }
+    try {
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+        if (user.verificationCode !== code ||
+            !(user.verificationExpires instanceof Date) ||
+            new Date() > user.verificationExpires) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid or expired verification code",
+            });
+            return;
+        }
+        // Verification successful, delete the verification code from the user entry
+        await deleteVerificationCode(email);
+        return res.status(200).json({
+            success: true,
+            message: "Verification successful. You can now reset your password.",
+        });
+    }
+    catch (error) {
+        return res
+            .status(500)
+            .json({ success: false, message: "Error verifying code" });
+    }
+};
+export const resetPassword = async (req, res) => {
+    const { password } = req.body;
+    const cookies = req.cookies;
+    const email = cookies.resetemail;
+    if (!email) {
+        return res
+            .status(400)
+            .json({ success: false, message: "Email not found in cookie" });
+    }
+    if (!password) {
+        return res
+            .status(400)
+            .json({ success: false, message: "Password is required" });
+    }
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        // Update the user's password
+        await updatePasswordByEmail(email, hashedPassword);
+        // Clear the cookie after successful password reset
+        res.clearCookie("resetemail");
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successfully.",
+        });
+    }
+    catch (error) {
+        return res
+            .status(500)
+            .json({ success: false, message: "Error resetting password" });
     }
 };
