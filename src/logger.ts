@@ -34,20 +34,19 @@
 // export default logger;
 
 import { createLogger, format, transports } from "winston";
-
 const { combine, timestamp, printf } = format;
 
-// Custom log format for console logging
+// Custom log format for console
 const consoleLogFormat = printf(({ level, message, timestamp }) => {
   return `${timestamp} [${level.toUpperCase()}]: ${message}`;
 });
 
-// Create a Winston logger for console logging
+// Create a Winston logger
 const logger = createLogger({
   level: "info",
   format: combine(timestamp(), consoleLogFormat),
   transports: [
-    // Console transport
+    // Console transport with colorized output
     new transports.Console({
       format: format.combine(
         format.colorize(),
@@ -57,4 +56,5 @@ const logger = createLogger({
   ],
 });
 
+// Export the logger
 export default logger;
